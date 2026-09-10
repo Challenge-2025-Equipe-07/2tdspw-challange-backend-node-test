@@ -1,0 +1,123 @@
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum PetSex {
+  M
+  F
+}
+
+enum PlanRecurrency {
+  single
+  recurrent
+}
+
+enum SaaSPlan {
+  starter
+  growth
+  scale
+}
+
+model User {
+  id             String         @id
+  userName       String
+  userEmail      String
+  saasPlan       SaaSPlan       @default(starter)
+  saasTutorQuota Int            @default(100)
+  saasMonthlyFee Int?
+  owners         Owner[]
+  notifications  Notification[]
+}
+
+model Owner {
+  id        String @id @default(uuid())
+  name      String
+  email     String
+  telephone String
+  document  String @unique
+  userId    String
+  user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pets      Pet[]
+}
+
+model Pet {
+  id            String         @id @default(uuid())
+  name          String
+  breed         String
+  sex           PetSex
+  weight        Float
+  age           Int
+  isCastrated   Boolean
+  species       String         @default("")
+  ownerId       String
+  owner         Owner          @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  carePlans     CarePlan[]
+  notifications Notification[]
+  consultas     Consulta[]
+}
+
+model Consulta {
+  id           String    @id @default(uuid())
+  petId        String
+  pet          Pet       @relation(fields: [petId], references: [id], onDelete: Cascade)
+  resumo       String    @default("")
+  diagnostico  String    @default("")
+  prescription String[]  @default([])
+  exams        Json      @default("[]")
+  finalizedAt  DateTime?
+  aiFedAt      DateTime?
+  aiFeedError  String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+model CarePlan {
+  id          String         @id @default(uuid())
+  description String
+  createdAt   DateTime       @default(now())
+  petId       String
+  pet         Pet            @relation(fields: [petId], references: [id], onDelete: Cascade)
+  items       CarePlanItem[]
+}
+
+model CarePlanItem {
+  id                   String         @id @default(uuid())
+  planItemName         String
+  planRecurrency       PlanRecurrency
+  planRecurrencyRate   Int?
+  planDurationInMonths Int
+  notifyWhatsapp       Boolean
+  notifyWeb            Boolean
+  carePlanId           String
+  carePlan             CarePlan       @relation(fields: [carePlanId], references: [id], onDelete: Cascade)
+}
+
+model Product {
+  id              String         @id @default(uuid())
+  productName     String
+  productPrice    Int
+  productQuantity Int?
+  appointments    Notification[]
+}
+
+model Notification {
+  id                  String   @id @default(uuid())
+  petId               String
+  pet                 Pet      @relation(fields: [petId], references: [id], onDelete: Cascade)
+  appointmentDateTime DateTime
+  appointmentName     String
+  appointmentPrice    Int?
+  notifyWhatsapp      Boolean  @default(false)
+  notifyWeb           Boolean  @default(true)
+  fromCarePlan        Boolean  @default(true)
+  userId              String
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productId           String?
+  product             Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+}
