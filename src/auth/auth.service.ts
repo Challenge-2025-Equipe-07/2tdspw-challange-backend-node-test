@@ -40,7 +40,19 @@ export class AuthService {
   }
 
   private async authenticateToken(token: string): Promise<AuthUser> {
-    const auth = getFirebaseAdminAuth();
+    let auth;
+    try {
+      auth = getFirebaseAdminAuth();
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : String(error);
+      // eslint-disable-next-line no-console -- misconfiguration is otherwise opaque on Render
+      console.error('[auth] Firebase Admin init failed:', detail);
+      throw new UnauthorizedException(
+        process.env.AUTH_DEBUG === 'true'
+          ? `Firebase is misconfigured: ${detail}`
+          : 'Firebase is misconfigured',
+      );
+    }
     if (!auth) {
       throw new UnauthorizedException('Firebase is not configured');
     }
@@ -56,8 +68,18 @@ export class AuthService {
         userName,
         userEmail,
       });
-    } catch {
-      throw new UnauthorizedException('Invalid bearer token');
+    } catch (error) {
+      if (error instanceof UnauthorizedException) {
+        throw error;
+      }
+      const detail = error instanceof Error ? error.message : String(error);
+      // eslint-disable-next-line no-console -- surface Firebase verify failures in host logs
+      console.error('[auth] verifyIdToken failed:', detail);
+      throw new UnauthorizedException(
+        process.env.AUTH_DEBUG === 'true'
+          ? `Invalid bearer token: ${detail}`
+          : 'Invalid bearer token',
+      );
     }
   }
 
