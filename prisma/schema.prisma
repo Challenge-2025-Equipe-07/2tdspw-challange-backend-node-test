@@ -40,10 +40,12 @@ model Owner {
   name      String
   email     String
   telephone String
-  document  String @unique
+  document  String
   userId    String
   user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   pets      Pet[]
+
+  @@unique([userId, document])
 }
 
 model Pet {

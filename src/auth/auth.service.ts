@@ -22,14 +22,7 @@ export class AuthService {
 
   async authenticate(token: string | undefined): Promise<AuthUser> {
     if (token) {
-      try {
-        return await this.authenticateToken(token);
-      } catch (error) {
-        if (this.isDevBypassEnabled() && !getFirebaseAdminAuth()) {
-          return this.upsertDevUser();
-        }
-        throw error;
-      }
+      return this.authenticateToken(token);
     }
 
     if (this.isDevBypassEnabled()) {
@@ -84,6 +77,9 @@ export class AuthService {
   }
 
   private isDevBypassEnabled() {
+    if (process.env.NODE_ENV === 'production') {
+      return false;
+    }
     return this.config.get<string>('AUTH_DEV_BYPASS') === 'true';
   }
 

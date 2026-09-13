@@ -17,9 +17,9 @@ npm run start:dev
 
 API: `http://localhost:3003`
 
-Send `Authorization: Bearer <Firebase ID token>` on every request except `GET /`.
+Send `Authorization: Bearer <Firebase ID token>` on every request except `GET /`. Each Firebase uid is its own clinic: a new account starts with no tutors, pets, care plans, or appointments.
 
-For local curl without Firebase, keep `AUTH_DEV_BYPASS=true` (default in `.env.example`). Requests without a token run as `AUTH_DEV_USER_ID` / `SEED_USER_ID` (`seed-vet-demo`). To see seed tutors in the app, set `SEED_USER_ID` to your Firebase uid and re-seed.
+For local curl without Firebase, keep `AUTH_DEV_BYPASS=true` (default in `.env.example`). **Requests without a token** run as `AUTH_DEV_USER_ID` / `SEED_USER_ID` (`seed-vet-demo`) and see the seeded demo clinic. A presented Bearer token is always verified and is never mapped onto the demo user. Bypass is ignored when `NODE_ENV=production`. Do not point `SEED_USER_ID` at a real Firebase uid — demo data stays on `seed-vet-demo`.
 
 - `GET /notifications?page=1`
 - `GET /owner` (list with pets, current vet only)

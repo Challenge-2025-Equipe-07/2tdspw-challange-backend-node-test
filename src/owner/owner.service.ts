@@ -83,7 +83,7 @@ export class OwnerService {
   async create(userId: string, dto: CreateOwnerDto) {
     const document = digitsOnly(dto.owner.document);
     const existing = await this.prisma.owner.findUnique({
-      where: { document },
+      where: { userId_document: { userId, document } },
     });
     if (existing) {
       throw new ConflictException('Owner with this document already exists');
