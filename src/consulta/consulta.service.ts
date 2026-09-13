@@ -118,4 +118,9 @@ export class ConsultaService {
       select: consultaSelect,
     });
   }
+
+  async remove(userId: string, id: string) {
+    await this.findById(userId, id);
+    await this.prisma.consulta.delete({ where: { id } });
+  }
 }

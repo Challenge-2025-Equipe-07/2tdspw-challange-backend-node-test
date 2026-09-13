@@ -44,9 +44,19 @@ export const updatePlanAppointmentSchema = z.object({
   notifyWeb: z.boolean(),
 });
 
-export const updatePlanNotificationsSchema = z.object({
-  appointments: z.array(updatePlanAppointmentSchema).min(1),
-});
+export const updatePlanNotificationsSchema = z
+  .object({
+    appointments: z.array(updatePlanAppointmentSchema).optional(),
+    carePlanDescription: z.string().optional(),
+    carePlan: z.array(createPlanItemSchema).optional(),
+  })
+  .refine(
+    (value) =>
+      value.appointments !== undefined ||
+      value.carePlanDescription !== undefined ||
+      value.carePlan !== undefined,
+    { message: 'At least one field is required' },
+  );
 
 export const createAppointmentSchema = z.object({
   productId: z.string().uuid(),

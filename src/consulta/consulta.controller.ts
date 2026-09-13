@@ -1,4 +1,15 @@
-import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  Patch,
+  Post,
+  Query,
+} from '@nestjs/common';
 
 import { CurrentUser } from '../auth/current-user.decorator';
 import type { AuthUser } from '../auth/auth.types';
@@ -46,5 +57,14 @@ export class ConsultaController {
     @Body({ schema: updateConsultaSchema }) body: UpdateConsultaDto,
   ) {
     return this.consultaService.update(user.id, id, body);
+  }
+
+  @Delete(':id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  remove(
+    @CurrentUser() user: AuthUser,
+    @Param('id', { schema: uuidParamSchema }) id: string,
+  ) {
+    return this.consultaService.remove(user.id, id);
   }
 }

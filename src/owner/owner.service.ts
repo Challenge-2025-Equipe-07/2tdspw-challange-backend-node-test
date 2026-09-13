@@ -236,28 +236,59 @@ export class OwnerService {
     dto: UpdatePlanNotificationsDto,
   ) {
     const pet = await this.findOwnedPet(userId, petId);
-    await this.requireCarePlan(pet.id);
+    const carePlan = await this.requireCarePlan(pet.id);
 
-    const ids = dto.appointments.map((appointment) => appointment.id);
-    const existing = await this.prisma.notification.findMany({
-      where: { id: { in: ids }, petId: pet.id, userId },
-      select: { id: true },
-    });
-    if (existing.length !== ids.length) {
-      throw new NotFoundException('Appointment not found');
+    if (dto.appointments && dto.appointments.length > 0) {
+      const ids = dto.appointments.map((appointment) => appointment.id);
+      const existing = await this.prisma.notification.findMany({
+        where: { id: { in: ids }, petId: pet.id, userId },
+        select: { id: true },
+      });
+      if (existing.length !== ids.length) {
+        throw new NotFoundException('Appointment not found');
+      }
+
+      await this.prisma.$transaction(
+        dto.appointments.map((appointment) =>
+          this.prisma.notification.update({
+            where: { id: appointment.id },
+            data: {
+              notifyWhatsapp: appointment.notifyWhatsapp,
+              notifyWeb: appointment.notifyWeb,
+            },
+          }),
+        ),
+      );
     }
 
-    await this.prisma.$transaction(
-      dto.appointments.map((appointment) =>
-        this.prisma.notification.update({
-          where: { id: appointment.id },
-          data: {
-            notifyWhatsapp: appointment.notifyWhatsapp,
-            notifyWeb: appointment.notifyWeb,
-          },
-        }),
-      ),
-    );
+    if (dto.carePlanDescription !== undefined || dto.carePlan !== undefined) {
+      await this.prisma.$transaction(async (tx) => {
+        if (dto.carePlanDescription !== undefined) {
+          await tx.carePlan.update({
+            where: { id: carePlan.id },
+            data: { description: dto.carePlanDescription },
+          });
+        }
+        if (dto.carePlan !== undefined) {
+          await tx.carePlanItem.deleteMany({
+            where: { carePlanId: carePlan.id },
+          });
+          if (dto.carePlan.length > 0) {
+            await tx.carePlanItem.createMany({
+              data: dto.carePlan.map((item) => ({
+                carePlanId: carePlan.id,
+                planItemName: item.planItemName,
+                planRecurrency: item.planRecurrency,
+                planRecurrencyRate: item.planRecurrencyRate,
+                planDurationInMonths: item.planDurationInMonths,
+                notifyWhatsapp: item.notifyWhatsapp,
+                notifyWeb: item.notifyWeb,
+              })),
+            });
+          }
+        }
+      });
+    }
 
     return this.getPlan(userId, petId);
   }
