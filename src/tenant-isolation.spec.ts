@@ -168,10 +168,27 @@ function createPrisma() {
           );
         },
       ),
-      create: jest.fn(async ({ data }: { data: { userId: string } }) => ({
-        id: '55555555-5555-5555-5555-555555555555',
-        ...data,
-      })),
+      create: jest.fn(
+        async ({
+          data,
+        }: {
+          data: {
+            userId: string;
+            name: string;
+            email: string;
+            telephone: string;
+            document: string;
+          };
+        }) => ({
+          id: '55555555-5555-5555-5555-555555555555',
+          name: data.name,
+          email: data.email,
+          telephone: data.telephone,
+          document: data.document,
+          pets: [],
+        }),
+      ),
+      delete: jest.fn(async () => undefined),
     },
     pet: {
       findFirst: jest.fn(
@@ -254,7 +271,9 @@ describe('tenant isolation for a new Firebase user', () => {
   beforeEach(() => {
     prisma = createPrisma();
     const prismaService = prisma as unknown as PrismaService;
-    ownerService = new OwnerService(prismaService);
+    ownerService = new OwnerService(prismaService, {
+      sync: () => Promise.resolve(),
+    });
     consultaService = new ConsultaService(prismaService);
     notificationsService = new NotificationsService(prismaService);
     dashboardService = new DashboardService(prismaService);

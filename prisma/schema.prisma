@@ -33,6 +33,7 @@ model User {
   saasMonthlyFee Int?
   owners         Owner[]
   notifications  Notification[]
+  expoPushTokens ExpoPushToken[]
 }
 
 model Owner {
@@ -122,4 +123,20 @@ model Notification {
   user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   productId           String?
   product             Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+}
+
+model ExpoPushToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model ChatPushReceipt {
+  messageId String   @id
+  createdAt DateTime @default(now())
 }

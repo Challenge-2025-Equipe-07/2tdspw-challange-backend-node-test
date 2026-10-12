@@ -4,6 +4,8 @@ export type AuthUser = {
   id: string;
   userName: string;
   userEmail: string;
+  role?: 'clinic' | 'tutor';
+  phoneNumber?: string;
 };
 
 export type MeProfile = {

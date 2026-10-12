@@ -61,6 +61,28 @@ describe('AuthService.authenticate', () => {
     mockGetFirebaseAdminAuth.mockReset();
   });
 
+  it('treats a phone sign-in without a tutor claim as a tutor', async () => {
+    mockGetFirebaseAdminAuth.mockReturnValue({
+      verifyIdToken: jest.fn().mockResolvedValue({
+        uid: 'tutor-uid',
+        phone_number: '+5511999990000',
+        firebase: { sign_in_provider: 'phone' },
+      }),
+    } as never);
+
+    const { service, prisma } = createService();
+    const user = await service.authenticate('phone-id-token');
+
+    expect(user).toEqual({
+      id: 'tutor-uid',
+      userName: 'Tutor',
+      userEmail: '',
+      phoneNumber: '+5511999990000',
+      role: 'tutor',
+    });
+    expect(prisma.user.upsert).not.toHaveBeenCalled();
+  });
+
   it('maps a verified Firebase token to that uid, not the demo user', async () => {
     mockGetFirebaseAdminAuth.mockReturnValue({
       verifyIdToken: jest.fn().mockResolvedValue({

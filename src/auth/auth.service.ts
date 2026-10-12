@@ -4,6 +4,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import type { Auth } from 'firebase-admin/auth';
 
 import {
   DEFAULT_SAAS_PLAN,
@@ -12,6 +13,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import type { AuthUser, MeProfile } from './auth.types';
 import { getFirebaseAdminAuth } from './firebase';
+import { TUTOR_ROLE } from './tutor-account.constants';
 
 @Injectable()
 export class AuthService {
@@ -33,7 +35,7 @@ export class AuthService {
   }
 
   private async authenticateToken(token: string): Promise<AuthUser> {
-    let auth;
+    let auth: Auth | null;
     try {
       auth = getFirebaseAdminAuth();
     } catch (error) {
@@ -51,16 +53,26 @@ export class AuthService {
     }
 
     try {
-      const decoded = await auth.verifyIdToken(token);
-      const userName =
-        decoded.name?.trim() || decoded.email || 'Veterinário';
+      const decoded = (await auth.verifyIdToken(token)) as {
+        uid: string;
+        name?: string;
+        email?: string;
+        role?: unknown;
+        phone_number?: unknown;
+        firebase?: { sign_in_provider?: unknown };
+      };
+      const tutor = readTutor(decoded);
+      if (tutor) return tutor;
+
+      const userName = decoded.name?.trim() || decoded.email || 'Veterinário';
       const userEmail = decoded.email || `${decoded.uid}@users.firebase`;
 
-      return this.upsertUser({
+      const clinic = await this.upsertUser({
         id: decoded.uid,
         userName,
         userEmail,
       });
+      return { ...clinic, phoneNumber: readPhone(decoded) };
     } catch (error) {
       if (error instanceof UnauthorizedException) {
         throw error;
@@ -116,7 +128,11 @@ export class AuthService {
     return user;
   }
 
-  private async upsertUser(user: AuthUser): Promise<AuthUser> {
+  private async upsertUser(user: {
+    id: string;
+    userName: string;
+    userEmail: string;
+  }): Promise<AuthUser> {
     const saved = await this.prisma.user.upsert({
       where: { id: user.id },
       create: {
@@ -134,6 +150,40 @@ export class AuthService {
       id: saved.id,
       userName: saved.userName,
       userEmail: saved.userEmail,
+      role: 'clinic',
     };
   }
+}
+
+function readPhone(decoded: { phone_number?: unknown }): string | undefined {
+  if (typeof decoded.phone_number !== 'string' || !decoded.phone_number) {
+    return undefined;
+  }
+  return decoded.phone_number;
+}
+
+function readTutor(decoded: {
+  uid: string;
+  role?: unknown;
+  phone_number?: unknown;
+  name?: unknown;
+  firebase?: { sign_in_provider?: unknown };
+}): AuthUser | null {
+  const phoneSignIn = decoded.firebase?.sign_in_provider === 'phone';
+  if (decoded.role !== TUTOR_ROLE && !phoneSignIn) return null;
+  const phoneNumber = readPhone(decoded);
+  if (!phoneNumber) {
+    throw new UnauthorizedException('Missing phone number');
+  }
+  const userName =
+    typeof decoded.name === 'string' && decoded.name.trim()
+      ? decoded.name.trim()
+      : 'Tutor';
+  return {
+    id: decoded.uid,
+    userName,
+    userEmail: '',
+    phoneNumber,
+    role: 'tutor',
+  };
 }

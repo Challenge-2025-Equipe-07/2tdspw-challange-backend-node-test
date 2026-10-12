@@ -11,6 +11,8 @@ import {
   resolveProduct,
 } from '../common/product-lookup';
 import { buildAppointments } from '../common/schedule';
+import { TutorAccountService } from '../auth/tutor-account.service';
+import type { TutorProfile } from '../auth/tutor-account.types';
 import { PrismaService } from '../prisma/prisma.service';
 import type {
   CreateAppointmentDto,
@@ -42,7 +44,21 @@ const ownerWithPetsSelect = {
 
 @Injectable()
 export class OwnerService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly tutorAccounts: TutorAccountService,
+  ) {}
+
+  async findByTelephone(phoneNumber: string) {
+    const owner = await this.prisma.owner.findFirst({
+      where: { telephone: phoneNumber },
+      select: ownerWithPetsSelect,
+    });
+    if (!owner) {
+      throw new NotFoundException('Owner not found');
+    }
+    return owner;
+  }
 
   async findAll(userId: string) {
     return this.prisma.owner.findMany({
@@ -89,7 +105,7 @@ export class OwnerService {
       throw new ConflictException('Owner with this document already exists');
     }
 
-    return this.prisma.owner.create({
+    const created = await this.prisma.owner.create({
       data: {
         userId,
         name: dto.owner.name,
@@ -110,11 +126,22 @@ export class OwnerService {
       },
       select: ownerWithPetsSelect,
     });
+
+    try {
+      await this.tutorAccounts.sync(toTutorProfile(created));
+    } catch (error) {
+      await this.prisma.owner
+        .delete({ where: { id: created.id } })
+        .catch(() => undefined);
+      throw error;
+    }
+
+    return created;
   }
 
   async addPet(userId: string, ownerId: string, dto: CreatePetDto) {
     await this.findById(userId, ownerId);
-    return this.prisma.pet.create({
+    const pet = await this.prisma.pet.create({
       data: {
         ownerId,
         name: dto.name,
@@ -127,6 +154,17 @@ export class OwnerService {
       },
       select: petSelect,
     });
+
+    try {
+      await this.syncOwnerAccount(userId, ownerId);
+    } catch (error) {
+      await this.prisma.pet
+        .delete({ where: { id: pet.id } })
+        .catch(() => undefined);
+      throw error;
+    }
+
+    return pet;
   }
 
   async createPlan(userId: string, petId: string, dto: CreatePlanDto) {
@@ -192,6 +230,18 @@ export class OwnerService {
 
   async getPlan(userId: string, petId: string) {
     const pet = await this.findOwnedPet(userId, petId);
+    return this.readPlan(pet, userId);
+  }
+
+  async getPlanForTutor(phoneNumber: string, petId: string) {
+    const pet = await this.findPetByTelephone(phoneNumber, petId);
+    return this.readPlan(pet, pet.owner.userId);
+  }
+
+  private async readPlan(
+    pet: { id: string; owner: { telephone: string } },
+    userId: string,
+  ) {
     const carePlan = await this.requireCarePlan(pet.id);
 
     const [notifications, products] = await Promise.all([
@@ -369,4 +419,51 @@ export class OwnerService {
     }
     return pet;
   }
+
+  private async findPetByTelephone(phoneNumber: string, petId: string) {
+    const pet = await this.prisma.pet.findUnique({
+      where: { id: petId },
+      include: { owner: true },
+    });
+    if (!pet || pet.owner.telephone !== phoneNumber) {
+      throw new NotFoundException('Pet not found');
+    }
+    return pet;
+  }
+
+  private async syncOwnerAccount(userId: string, ownerId: string) {
+    const owner = await this.prisma.owner.findFirst({
+      where: { id: ownerId, userId },
+      select: ownerWithPetsSelect,
+    });
+    if (!owner) {
+      throw new NotFoundException('Owner not found');
+    }
+    await this.tutorAccounts.sync(toTutorProfile(owner));
+  }
+}
+
+function toTutorProfile(owner: {
+  name: string;
+  email: string;
+  telephone: string;
+  document: string;
+  pets: TutorProfile['pets'];
+}): TutorProfile {
+  return {
+    name: owner.name,
+    email: owner.email,
+    telephone: owner.telephone,
+    document: owner.document,
+    pets: owner.pets.map((pet) => ({
+      id: pet.id,
+      name: pet.name,
+      breed: pet.breed,
+      sex: pet.sex === 'F' ? 'F' : 'M',
+      weight: pet.weight,
+      age: pet.age,
+      isCastrated: pet.isCastrated,
+      species: pet.species,
+    })),
+  };
 }
