@@ -40,7 +40,7 @@ export class AuthService {
       auth = getFirebaseAdminAuth();
     } catch (error) {
       const detail = error instanceof Error ? error.message : String(error);
-      // eslint-disable-next-line no-console -- misconfiguration is otherwise opaque on Render
+
       console.error('[auth] Firebase Admin init failed:', detail);
       throw new UnauthorizedException(
         process.env.AUTH_DEBUG === 'true'
@@ -78,7 +78,7 @@ export class AuthService {
         throw error;
       }
       const detail = error instanceof Error ? error.message : String(error);
-      // eslint-disable-next-line no-console -- surface Firebase verify failures in host logs
+
       console.error('[auth] verifyIdToken failed:', detail);
       throw new UnauthorizedException(
         process.env.AUTH_DEBUG === 'true'

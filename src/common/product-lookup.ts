@@ -5,11 +5,7 @@ export type ProductBid = {
 };
 
 export function normalizeProductKey(name: string): string {
-  return name
-    .normalize('NFD')
-    .replace(/\p{M}/gu, '')
-    .toLowerCase()
-    .trim();
+  return name.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().trim();
 }
 
 export function buildProductLookup(

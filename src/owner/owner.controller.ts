@@ -19,12 +19,14 @@ import {
   createOwnerSchema,
   createPlanSchema,
   petSchema,
+  tutorPlanNotificationsSchema,
   updatePlanNotificationsSchema,
   uuidParamSchema,
   type CreateAppointmentDto,
   type CreateOwnerDto,
   type CreatePetDto,
   type CreatePlanDto,
+  type TutorPlanNotificationsDto,
   type UpdatePlanNotificationsDto,
 } from './owner.schemas';
 import { OwnerService } from './owner.service';
@@ -90,6 +92,25 @@ export class OwnerController {
     @Body({ schema: createPlanSchema }) body: CreatePlanDto,
   ) {
     return this.ownerService.createPlan(clinicId(user), petId, body);
+  }
+
+  @Patch(':petId/plan/notifications')
+  updatePlanNotifications(
+    @CurrentUser() user: AuthUser,
+    @Param('petId', { schema: uuidParamSchema }) petId: string,
+    @Body({ schema: tutorPlanNotificationsSchema })
+    body: TutorPlanNotificationsDto,
+  ) {
+    if (user.role !== 'tutor') {
+      throw new ForbiddenException(
+        'Clinic accounts cannot change notification preferences',
+      );
+    }
+    return this.ownerService.updatePlanNotificationsForTutor(
+      tutorPhone(user),
+      petId,
+      body,
+    );
   }
 
   @Patch(':petId/plan')

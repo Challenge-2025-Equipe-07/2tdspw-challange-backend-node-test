@@ -58,6 +58,10 @@ export const updatePlanNotificationsSchema = z
     { message: 'At least one field is required' },
   );
 
+export const tutorPlanNotificationsSchema = z.object({
+  appointments: z.array(updatePlanAppointmentSchema).min(1),
+});
+
 export const createAppointmentSchema = z.object({
   productId: z.string().uuid(),
   appointmentDate: z
@@ -75,5 +79,8 @@ export type CreatePetDto = z.infer<typeof petSchema>;
 export type CreatePlanDto = z.infer<typeof createPlanSchema>;
 export type UpdatePlanNotificationsDto = z.infer<
   typeof updatePlanNotificationsSchema
+>;
+export type TutorPlanNotificationsDto = z.infer<
+  typeof tutorPlanNotificationsSchema
 >;
 export type CreateAppointmentDto = z.infer<typeof createAppointmentSchema>;

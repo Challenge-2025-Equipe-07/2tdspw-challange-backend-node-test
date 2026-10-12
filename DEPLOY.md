@@ -120,10 +120,13 @@ az webapp config appsettings set \
   --settings \
     FIREBASE_PROJECT_ID='your-project-id' \
     FIREBASE_SERVICE_ACCOUNT='{"type":"service_account","project_id":"..."}' \
-    CHAT_WEBHOOK_SECRET='choose-a-long-secret'
+    CHAT_WEBHOOK_SECRET='choose-a-long-secret' \
+    VAPID_PUBLIC_KEY='your-public-key' \
+    VAPID_PRIVATE_KEY='your-private-key' \
+    VAPID_SUBJECT='mailto:you@example.com'
 ```
 
-Paste the service account JSON as one line. `CHAT_WEBHOOK_SECRET` is the value the RAG caller sends as `x-chat-webhook-secret` on `POST /notifications/chat`. A later `az deployment group create` writes these settings back to empty, because the template defaults are empty. Run this command again after any infrastructure redeploy.
+Paste the service account JSON as one line. `CHAT_WEBHOOK_SECRET` is the value the RAG caller sends as `x-chat-webhook-secret` on `POST /notifications/chat`. `VAPID_SUBJECT` is a `mailto:` or `https:` URL. Generate the key pair with `npx web-push generate-vapid-keys` and keep the private key out of the repository. A later `az deployment group create` writes these settings back to empty, because the template defaults are empty. Run this command again after any infrastructure redeploy.
 
 ## 10. Delete it when the month is over
 

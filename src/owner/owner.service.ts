@@ -19,6 +19,7 @@ import type {
   CreateOwnerDto,
   CreatePetDto,
   CreatePlanDto,
+  TutorPlanNotificationsDto,
   UpdatePlanNotificationsDto,
 } from './owner.schemas';
 
@@ -341,6 +342,37 @@ export class OwnerService {
     }
 
     return this.getPlan(userId, petId);
+  }
+
+  async updatePlanNotificationsForTutor(
+    phoneNumber: string,
+    petId: string,
+    dto: TutorPlanNotificationsDto,
+  ) {
+    const pet = await this.findPetByTelephone(phoneNumber, petId);
+    const userId = pet.owner.userId;
+    const ids = dto.appointments.map((appointment) => appointment.id);
+    const existing = await this.prisma.notification.findMany({
+      where: { id: { in: ids }, petId: pet.id, userId },
+      select: { id: true },
+    });
+    if (existing.length !== ids.length) {
+      throw new NotFoundException('Appointment not found');
+    }
+
+    await this.prisma.$transaction(
+      dto.appointments.map((appointment) =>
+        this.prisma.notification.update({
+          where: { id: appointment.id },
+          data: {
+            notifyWhatsapp: appointment.notifyWhatsapp,
+            notifyWeb: appointment.notifyWeb,
+          },
+        }),
+      ),
+    );
+
+    return this.getPlanForTutor(phoneNumber, petId);
   }
 
   async createAppointment(

@@ -97,7 +97,7 @@ export class ConsultaService {
     if (dto.diagnostico !== undefined) data.diagnostico = dto.diagnostico;
     if (dto.prescription !== undefined) data.prescription = dto.prescription;
     if (dto.exams !== undefined) {
-      data.exams = dto.exams as Prisma.InputJsonValue;
+      data.exams = dto.exams;
     }
     if (dto.finalizedAt !== undefined) {
       data.finalizedAt = dto.finalizedAt ? new Date(dto.finalizedAt) : null;

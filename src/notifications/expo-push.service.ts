@@ -18,6 +18,10 @@ export class ExpoPushService {
   }
 
   async deliverChat(input: ChatPushDto): Promise<void> {
+    if (input.audience === 'tutor') {
+      throw new BadGatewayException('Expo push failed');
+    }
+
     const existing = await this.prisma.chatPushReceipt.findUnique({
       where: { messageId: input.messageId },
     });

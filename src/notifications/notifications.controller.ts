@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   ForbiddenException,
   Get,
   HttpCode,
@@ -22,10 +23,15 @@ import { ExpoPushService } from './expo-push.service';
 import {
   chatPushSchema,
   pushTokenSchema,
+  webPushSubscriptionSchema,
+  webPushUnsubscribeSchema,
   type ChatPushDto,
   type PushTokenDto,
+  type WebPushSubscriptionDto,
+  type WebPushUnsubscribeDto,
 } from './notifications.schemas';
 import { NotificationsService } from './notifications.service';
+import { WebPushService } from './web-push.service';
 
 const pageSchema = z.coerce.number().int().positive().optional();
 const optionalDateSchema = z.string().min(1).optional();
@@ -35,6 +41,7 @@ export class NotificationsController {
   constructor(
     private readonly notificationsService: NotificationsService,
     private readonly expoPushService: ExpoPushService,
+    private readonly webPushService: WebPushService,
   ) {}
 
   @Put('push-token')
@@ -49,11 +56,42 @@ export class NotificationsController {
     return this.expoPushService.saveToken(user.id, body.token);
   }
 
+  @Put('web-push')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  saveWebPush(
+    @CurrentUser() user: AuthUser,
+    @Body({ schema: webPushSubscriptionSchema }) body: WebPushSubscriptionDto,
+  ) {
+    if (user.role !== 'tutor') {
+      throw new ForbiddenException(
+        'Clinic accounts cannot register a web push subscription',
+      );
+    }
+    return this.webPushService.saveSubscription(user.id, body);
+  }
+
+  @Delete('web-push')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  deleteWebPush(
+    @CurrentUser() user: AuthUser,
+    @Body({ schema: webPushUnsubscribeSchema }) body: WebPushUnsubscribeDto,
+  ) {
+    if (user.role !== 'tutor') {
+      throw new ForbiddenException(
+        'Clinic accounts cannot register a web push subscription',
+      );
+    }
+    return this.webPushService.deleteSubscription(user.id, body);
+  }
+
   @Public()
   @UseGuards(ChatWebhookGuard)
   @Post('chat')
   @HttpCode(HttpStatus.ACCEPTED)
   deliverChat(@Body({ schema: chatPushSchema }) body: ChatPushDto) {
+    if (body.audience === 'tutor') {
+      return this.webPushService.deliverTutorChat(body);
+    }
     return this.expoPushService.deliverChat(body);
   }
 
